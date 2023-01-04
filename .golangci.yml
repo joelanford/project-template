@@ -1,0 +1,106 @@
+linters:
+  disable-all: true
+  enable:
+  - asciicheck
+  - bodyclose
+  - depguard
+  - dogsled
+  - errcheck
+  - errorlint
+  - exportloopref
+  - goconst
+  - gocritic
+  - gocyclo
+  - gofmt
+  - goimports
+  - goprintffuncname
+  - gosec
+  - gosimple
+  - govet
+  - importas
+  - ineffassign
+  - misspell
+  - nakedret
+  - nilerr
+  - nolintlint
+  - prealloc
+  - revive
+  - staticcheck
+  - stylecheck
+  - typecheck
+  - unconvert
+  - unparam
+  - unused
+  - whitespace
+
+linters-settings:
+  importas:
+    no-unaliased: true
+    alias:
+      # Kubernetes
+      - pkg: k8s.io/api/core/v1
+        alias: corev1
+      - pkg: k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1
+        alias: apiextensionsv1
+      - pkg: k8s.io/apimachinery/pkg/apis/meta/v1
+        alias: metav1
+      - pkg: k8s.io/apimachinery/pkg/api/errors
+        alias: apierrors
+      - pkg: k8s.io/apimachinery/pkg/util/errors
+        alias: kerrors
+      # Controller Runtime
+      - pkg: sigs.k8s.io/controller-runtime
+        alias: ctrl
+  staticcheck:
+    go: "1.19"
+  stylecheck:
+    go: "1.19"
+  depguard:
+    include-go-root: true
+    packages:
+      - io/ioutil # https://go.dev/doc/go1.16#ioutil
+      - gopkg.in/yaml.v2
+      - gopkg.in/yaml.v3
+    packages-with-error-message:
+      - gokg.in/yaml.v2: 'sigs.k8s.io/yaml should be used for YAML processing'
+      - gokg.in/yaml.v3: 'sigs.k8s.io/yaml should be used for YAML processing'
+
+issues:
+  max-same-issues: 0
+  max-issues-per-linter: 0
+  # We are disabling default golangci exclusions because we want to help reviewers to focus on reviewing the most relevant
+  # changes in PRs and avoid nitpicking.
+  exclude-use-default: false
+  # List of regexps of issue texts to exclude, empty list by default.
+  exclude:
+  # The following are being worked on to remove their exclusion. This list should be reduced or go away all together over time.
+  # If it is decided they will not be addressed they should be moved above this comment.
+  - "ST1000: at least one file in a package should have a package comment"
+  exclude-rules:
+  # With Go 1.16, the new embed directive can be used with an un-named import,
+  # revive (previously, golint) only allows these to be imported in a main.go, which wouldn't work for us.
+  # This directive allows the embed package to be imported with an underscore everywhere.
+  - linters:
+    - revive
+    source: _ "embed"
+  # Dot imports for gomega or ginkgo are allowed
+  # within test files.
+  - path: _test\.go
+    text: should not use dot imports
+  - path: _test\.go
+    text: cyclomatic complexity
+  # It considers all file access to a filename that comes from a variable problematic,
+  # which is naive at best.
+  - linters:
+    - gosec
+    text: "G304: Potential file inclusion via variable"
+  - linters:
+    - revive
+    text: "package-comments: should have a package comment"
+
+run:
+  timeout: 10m
+  skip-files:
+  - "zz_generated.*\\.go$"
+  - ".*conversion.*\\.go$"
+  allow-parallel-runners: true

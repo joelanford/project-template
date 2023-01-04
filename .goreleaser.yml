@@ -1,0 +1,77 @@
+# Global environment variables for builds.
+env:
+  - CGO_ENABLED=0
+  - GO111MODULE=on
+
+# Hooks to run before any build is run.
+before:
+  hooks:
+    - go mod download
+
+# Binary builds.
+builds:
+  - binary: "{{ .Env.PROJECT_NAME }}"
+    mod_timestamp: "{{ .CommitTimestamp }}"
+    tags: [ "{{ .Env.GO_BUILD_TAGS }}" ]
+    asmflags:
+      - all=-trimpath={{ dir .Env.PWD }}
+    gcflags:
+      - all=-trimpath={{ dir .Env.PWD }}
+    ldflags:
+      - -s
+      - -w
+      - -X {{ .Env.VERSION_PKG }}.GitVersion={{ .Env.GIT_VERSION }}
+      - -X {{ .Env.VERSION_PKG }}.GitCommit={{ .Env.GIT_COMMIT }}
+    targets:
+      - darwin_amd64
+      - darwin_arm64
+      - linux_amd64
+      - linux_arm64
+      - linux_ppc64le
+      - linux_s390x
+
+# Use most recent tag and short commit for snapshot version.
+snapshot:
+  name_template: "{{ .Env.GIT_VERSION }}"
+
+archives:
+  - format: binary
+    name_template: "{{ .Binary }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}{{ if .Mips }}_{{ .Mips }}{{ end }}"
+
+dockers:
+  - goarch: amd64
+    image_templates:
+      - "{{ .Env.IMG }}:{{ .Tag }}-amd64"
+    build_flag_templates:
+      - "--build-arg=PROJECT_NAME={{ .Env.PROJECT_NAME }}"
+  - goarch: arm64
+    image_templates:
+      - "{{ .Env.IMG }}:{{ .Tag }}-arm64"
+    build_flag_templates:
+      - "--build-arg=PROJECT_NAME={{ .Env.PROJECT_NAME }}"
+  - goarch: ppc64le
+    image_templates:
+      - "{{ .Env.IMG }}:{{ .Tag }}-ppc64le"
+    build_flag_templates:
+      - "--build-arg=PROJECT_NAME={{ .Env.PROJECT_NAME }}"
+  - goarch: s390x
+    image_templates:
+      - "{{ .Env.IMG }}:{{ .Tag }}-s390x"
+    build_flag_templates:
+      - "--build-arg=PROJECT_NAME={{ .Env.PROJECT_NAME }}"
+
+docker_manifests:
+  - name_template: "{{ .Env.IMG }}:{{ .Tag }}"
+    image_templates:
+      - "{{ .Env.IMG }}:{{ .Tag }}-amd64"
+      - "{{ .Env.IMG }}:{{ .Tag }}-arm64"
+      - "{{ .Env.IMG }}:{{ .Tag }}-ppc64le"
+      - "{{ .Env.IMG }}:{{ .Tag }}-s390x"
+
+checksum:
+  name_template: "checksums.txt"
+
+signs:
+  - artifacts: checksum
+    args: ["-u", "{{ .Env.GPG_FINGERPRINT }}", "--passphrase-fd", "0", "--output", "${signature}", "--detach-sign", "${artifact}"]
+    stdin: '{{ .Env.GPG_PASSPHRASE }}'
